@@ -1,17 +1,20 @@
-# winreg-ts
-Basically, it is a raw migration of the original project https://github.com/fresc81/node-winreg to typescript.
+# winreg-Deno
+
+This is a Deno port of Winreg-ts from NPMJS, that allows the user to read and write registry values.
+
+~~Basically, it is a raw migration of the original project https://github.com/fresc81/node-winreg to typescript.
 We even keep the code formatting and design to ease the comparaison and do not introduce regressions.
-We just add utf8 support from https://github.com/eskibear/node-winreg-utf8
+We just add utf8 support from https://github.com/eskibear/node-winreg-utf8~~
 
 # Installation
 The following command installs winreg-ts.
 ```bash
-npm install winreg-ts
+TBA
 ```
 
 # Typescript
 ```
-import { Registry } from 'winreg-ts';
+import { Registry } from 'TBA';
 
 const regKey = new Registry({
     hive: Registry.HKCU,
@@ -20,18 +23,6 @@ const regKey = new Registry({
 });
 ```
 
-# Javascript
-## Breaking change
-### Before (winreg)
-```
-  // Registry class
-  var Registry = require('winreg');
-```
-### After (winreg-ts)
-```
-  // Registry class
-  var Registry = require('winreg-ts').Registry;
-```
 
 
 # MIT License
