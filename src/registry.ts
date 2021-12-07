@@ -44,6 +44,7 @@ export /* default */ class Registry {
 	private _utf8: boolean   // utf8 flag
 
 	constructor(options?: Options) {
+		console.info('[registry] Registry constructor')
 		const _options = options || {};
 		this._host = '' + (_options.host || '')    // hostname
 		this._hive = (_options.hive || HKLM)  // registry hive
@@ -244,7 +245,7 @@ export /* default */ class Registry {
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = [ 'QUERY', pathArg];
-
+		console.log(`Debug ARG for values : `,args);
 		// pushArch(args, this.arch);
 
 		// var proc = spawn(getRegExePath(this.utf8), args, {
@@ -301,7 +302,7 @@ export /* default */ class Registry {
 		// });
 
 		return this;
-	};
+	}
 
 	/**
 	 * Retrieve all subkeys from this registry key.
@@ -317,7 +318,7 @@ export /* default */ class Registry {
 		const args = [ 'QUERY', pathArg];
 
 		pushArch(args, this.arch!);
-
+		console.log(`Debug ARG for keys : `,args);
 		// var proc = spawn(getRegExePath(this.utf8), args, {
 		// 		cwd: undefined,
 		// 		env: process.env,
@@ -387,7 +388,7 @@ export /* default */ class Registry {
 		// });
 
 		return this;
-	};
+	}
 
 	/**
 	 * Gets a named value from this registry key.
@@ -409,7 +410,7 @@ export /* default */ class Registry {
 		}
 
 		pushArch(args, this.arch!);
-
+		console.log(`Debug ARG for get : `,args);
 		// var proc = spawn(getRegExePath(this.utf8), args, {
 		// 		cwd: undefined,
 		// 		env: process.env,
@@ -473,7 +474,7 @@ export /* default */ class Registry {
 		// });
 
 		return this;
-	};
+	}
 
 	/**
 	 * Sets a named value in this registry key, overwriting an already existing value.
@@ -500,7 +501,7 @@ export /* default */ class Registry {
 		args = args.concat(['/t', type, '/d', value, '/f']);
 
 		pushArch(args, this.arch!);
-
+		console.log(`Debug ARG for set : `,args);
 		// var proc = spawn(getRegExePath(this.utf8), args, {
 		// 		cwd: undefined,
 		// 		env: process.env,
@@ -533,7 +534,7 @@ export /* default */ class Registry {
 		// });
 
 		return this;
-	};
+	}
 
 	/**
 	 * Remove a named value from this registry key. If name is empty, sets the default value of this key.
@@ -547,10 +548,10 @@ export /* default */ class Registry {
 		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
-		let args = name ? ['DELETE', pathArg, '/f', '/v', name] : ['DELETE', pathArg, '/f', '/ve'];
+		const args = name ? ['DELETE', pathArg, '/f', '/v', name] : ['DELETE', pathArg, '/f', '/ve'];
 
 		pushArch(args, this.arch!);
-
+		console.log(`Debug ARG for REMOVE : `,args);
 		// var proc = spawn(getRegExePath(this.utf8), args, {
 		// 		cwd: undefined,
 		// 		env: process.env,
@@ -583,7 +584,7 @@ export /* default */ class Registry {
 		// });
 
 		return this;
-	};
+	}
 
 	/**
 	 * Remove all subkeys and values (including the default value) from this registry key.
@@ -597,7 +598,7 @@ export /* default */ class Registry {
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = ['DELETE', pathArg, '/f', '/va'];
 		pushArch(args, this.arch!);
-
+		console.log(`Debug ARG for CLEAR : `,args);
 		// var proc = spawn(getRegExePath(this.utf8), args, {
 		// 		cwd: undefined,
 		// 		env: process.env,
@@ -630,7 +631,7 @@ export /* default */ class Registry {
 		// });
 
 		return this;
-	};
+	}
 
 	/**
 	 * Alias for the clear method to keep it backward compatible.
@@ -654,9 +655,10 @@ export /* default */ class Registry {
 
 		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
-		var args = ['DELETE', pathArg, '/f'];
+		const args = ['DELETE', pathArg, '/f'];
 
 		pushArch(args, this.arch!);
+		console.log(`Debug ARG for DESTROY : `,args);
 
 		// var proc = spawn(getRegExePath(this.utf8), args, {
 		// 		cwd: undefined,
