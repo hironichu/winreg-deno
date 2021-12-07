@@ -1,3 +1,4 @@
+import { $ } from './deps.ts'
 import Options from './types/options.ts';
 import RegistryItem from './types/RegistryItem.ts'
 import ProcessUncleanExitError from './error.ts'
@@ -239,69 +240,52 @@ export /* default */ class Registry {
 	 * @param {array=} cb.items - an array of {@link RegistryItem} objects
 	 * @returns {Registry} this registry key object
 	 */
-	values(cb: (err: Error | null, items?: RegistryItem[]) => void): this {
+	async values(cb: (err: Error | null, items?: RegistryItem[]) => void): Promise<this> {
 
 		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = [ 'QUERY', pathArg];
+		pushArch(args, this.arch!);
+		//DEBUG
 		console.log(`Debug ARG for values : `,args);
-		// pushArch(args, this.arch);
 
-		// var proc = spawn(getRegExePath(this.utf8), args, {
-		// 		cwd: undefined,
-		// 		env: process.env,
-		// 		stdio: [ 'ignore', 'pipe', 'pipe' ],
-		// 		shell: this.utf8
-		// 	})
-		// ,   buffer = ''
-		// ,   self = this
-		// ,   error: Error = null // null means no error previously reported.
+		const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+		// proc.then((res) => {
+			// const { stdout, stderr, code, success} = res;
+		if (success) {
+			const lines = stdout.split('\n')
+			const items = lines.reduce((acc, line: string) => {
+				if (line.length > 1) acc.push(line.trim());
+				return acc
+			}, <string[]>[])
 
-		// var output = captureOutput(proc);
+			const result = items.reduce((acc, item: string) => {
+				const match = ITEM_PATTERN.exec(item)
+				if (match) {
+					const regItem = new RegistryItemImpl(
+						this.host, 
+						this.hive, 
+						this.key, 
+						match[1].trim(),
+						match[2].trim(), 
+						match[3],
+						this.arch!
+					)
+					acc.push(regItem)
+				}
+				return acc
+			}, <RegistryItem[]>[])
 
-		// proc.on('close', function (code) {
-		// 	if (error) {
-		// 		return;
-		// 	} else if (code !== 0) {
-		
-		// 		console.log('process exited with code ' + code);
-		// 		cb(mkErrorMsg('QUERY', code, output), undefined);
-		// 	} else {
-		// 		const items = []
-		// 		const result = []
-		// 		const lines = buffer.split('\n')
-		// 		let lineNumber = 0
-		// 		for (var i = 0, l = lines.length; i < l; i++) {
-		// 			var line = lines[i].trim();
-		// 			if (line.length > 0) {
-		// 				console.log(line);
-		// 				if (lineNumber != 0) {
-		// 					items.push(line);
-		// 				}
-		// 				++lineNumber;
-		// 			}
-		// 		}
-		// 		for (var i = 0, l = items.length; i < l; i++) {
-		// 			const match = ITEM_PATTERN.exec(items[i])
-		// 			let name
-		// 			let type
-		// 			let value
-
-		// 			if (match) {
-		// 				name = match[1].trim();
-		// 				type = match[2].trim();
-		// 				value = match[3];
-		// 				result.push(new RegistryItemImpl(self.host, self.hive, self.key, name, type, value, self.arch));
-		// 			}
-		// 		}
-
-		// 	cb(null, result);
-
-		// 	}
-		// });
-
-		return this;
+			cb(null, result);
+		}
+		else {
+			cb(new ProcessUncleanExitError(stderr.toString(), code));
+		}
+		if (code !== 0) {
+			cb(new ProcessUncleanExitError(stderr.toString(), code));
+		}
+		return this
 	}
 
 	/**
@@ -311,82 +295,41 @@ export /* default */ class Registry {
 	 * @param {array=} cb.items - an array of {@link Registry} objects
 	 * @returns {Registry} this registry key object
 	 */
-	keys(cb: (err: Error | null, items?: Registry[]) => void): this {
+	async keys(cb: (err: Error | null, items?: Registry[]) => void): Promise<this> {
 		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = [ 'QUERY', pathArg];
 
 		pushArch(args, this.arch!);
-		console.log(`Debug ARG for keys : `,args);
-		// var proc = spawn(getRegExePath(this.utf8), args, {
-		// 		cwd: undefined,
-		// 		env: process.env,
-		// 		stdio: [ 'ignore', 'pipe', 'pipe' ],
-		// 		shell: this.utf8
-		// 	})
-		// let buffer = ''
-		// let self = this
-		// let error: Error | null = null // null means no error previously reported.
+		console.debug(`Debug ARG for keys : `,args);
+		const {code, stdout, stderr, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
 
-		// var output = captureOutput(proc);
-
-		// proc.on('close', function (code) {
-		// 	if (error) {
-		// 	return;
-		// 	} else if (code !== 0) {
-		// 	log('process exited with code ' + code);
-		// 	cb(mkErrorMsg('QUERY', code, output), null);
-		// 	}
-		// });
-
-		// proc.stdout.on('data', function (data) {
-		// 	buffer += data.toString();
-		// });
-
-		// proc.stdout.on('end', function () {
-
-		// 	var items = []
-		// 	,   result = []
-		// 	,   lines = buffer.split('\n')
-
-		// 	for (var i = 0, l = lines.length; i < l; i++) {
-		// 	var line = lines[i].trim();
-		// 	if (line.length > 0) {
-		// 		log(line);
-		// 		items.push(line);
-		// 	}
-		// 	}
-
-		// 	for (var i = 0, l = items.length; i < l; i++) {
-
-		// 	var match = PATH_PATTERN.exec(items[i])
-		// 	// ,   hive
-		// 	,   key
-
-		// 	if (match) {
-		// 		// hive = match[1];
-		// 		key  = match[2];
-		// 		if (key && (key !== self.key)) {
-		// 		result.push(new Registry({
-		// 			host: self.host,
-		// 			hive: self.hive,
-		// 			key:  key,
-		// 			arch: self.arch
-		// 		}));
-		// 		}
-		// 	}
-		// 	}
-
-		// 	cb(null, result);
-
-		// });
-
-		// proc.on('error', function(err) {
-		// 	error = err;
-		// 	cb(err);
-		// });
-
+		if (success) {
+			const lines = stdout.split('\n')
+			const items = lines.reduce((acc, line: string) => {
+				if (line.length > 1) acc.push(line.trim());
+				return acc
+			}, <string[]>[])
+			
+			const result = items.reduce((acc, item: string) => {
+				const match = ITEM_PATTERN.exec(item)
+				if (match) {
+					if (match[2] && (match[2] !== this.key)) {
+						acc.push(new Registry({
+							host: this.host,
+							hive: this.hive,
+							key:  match[2],
+							arch: this.arch!
+						}));
+					}
+				}
+				return acc
+			}, <Registry[]>[])
+			cb(null, result);
+		} else {
+			cb(new ProcessUncleanExitError(stderr.toString(), code));
+		}
 		return this;
 	}
 
@@ -398,7 +341,7 @@ export /* default */ class Registry {
 	 * @param {RegistryItem=} cb.item - the retrieved registry item
 	 * @returns {Registry} this registry key object
 	 */
-	get(name: string, cb: (err: Error | null, item?: RegistryItem) => void): this {
+	async get(name: string, cb: (err: Error | null, item?: RegistryItem) => void): Promise<this> {
 		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
@@ -410,69 +353,37 @@ export /* default */ class Registry {
 		}
 
 		pushArch(args, this.arch!);
-		console.log(`Debug ARG for get : `,args);
-		// var proc = spawn(getRegExePath(this.utf8), args, {
-		// 		cwd: undefined,
-		// 		env: process.env,
-		// 		stdio: [ 'ignore', 'pipe', 'pipe' ],
-		// 		shell: this.utf8
-		// 	})
-		// ,   buffer = ''
-		// ,   self = this
-		// ,   error: Error = null // null means no error previously reported.
+		console.debug(`Debug ARG for get : `,args);
+		const {code, stdout, stderr, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+		if (success) {
+			const lines = stdout.split('\n')
+			let result = null
+			const items = lines.reduce((acc, line: string) => {
+				if (line.length > 1) acc.push(line.trim());
+				return acc
+			}, <string[]>[])
 
-		// var output = captureOutput(proc);
-
-		// proc.on('close', function (code) {
-		// 	if (error) {
-		// 	return;
-		// 	} else if (code !== 0) {
-		// 	log('process exited with code ' + code);
-		// 	cb(mkErrorMsg('QUERY', code, output), null);
-		// 	} else {
-		// 	var items = []
-		// 	,   result = null
-		// 	,   lines = buffer.split('\n')
-		// 	,   lineNumber = 0
-
-		// 	for (var i = 0, l = lines.length; i < l; i++) {
-		// 		var line = lines[i].trim();
-		// 		if (line.length > 0) {
-		// 		log(line);
-		// 		if (lineNumber != 0) {
-		// 			items.push(line);
-		// 		}
-		// 		++lineNumber;
-		// 		}
-		// 	}
-
-		// 	//Get last item - so it works in XP where REG QUERY returns with a header
-		// 	var item = items[items.length-1] || ''
-		// 	,   match = ITEM_PATTERN.exec(item)
-		// 	,   name
-		// 	,   type
-		// 	,   value
-
-		// 	if (match) {
-		// 		name = match[1].trim();
-		// 		type = match[2].trim();
-		// 		value = match[3];
-		// 		result = new RegistryItemImpl(self.host, self.hive, self.key, name, type, value, self.arch);
-		// 	}
-
-		// 	cb(null, result);
-		// 	}
-		// });
-
-		// proc.stdout.on('data', function (data) {
-		// 	buffer += data.toString();
-		// });
-
-		// proc.on('error', function(err) {
-		// 	error = err;
-		// 	cb(err);
-		// });
-
+			const item = items[items.length-1] || ''
+			console.debug(`Item`, items)
+			const match = ITEM_PATTERN.exec(item)
+			if (match) {
+				result = new RegistryItemImpl(
+					this.host, 
+					this.hive, 
+					this.key, 
+					match[1].trim(),
+					match[2].trim(), 
+					match[3],
+					this.arch!
+				)
+				cb(null, result);
+			} else {
+				cb(null, undefined);
+			}
+		} else {
+			console.error('process exited with code ' + code);
+			cb(mkErrorMsg('QUERY', code, {stdout, stderr}), undefined);
+		}
 		return this;
 	}
 
@@ -485,7 +396,7 @@ export /* default */ class Registry {
 	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
 	 * @returns {Registry} this registry key object
 	 */
-	set(name: string, type: string, value: string, cb: (err: Error | null, _ignored_?: any) => void): this {
+	async set(name: string, type: string, value: string, cb: (err: Error | null, _ignored_?: unknown) => void): Promise<this> {
 
 		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 		if (REG_TYPES.indexOf(type) == -1) throw Error('illegal type specified.');
@@ -502,37 +413,16 @@ export /* default */ class Registry {
 
 		pushArch(args, this.arch!);
 		console.log(`Debug ARG for set : `,args);
-		// var proc = spawn(getRegExePath(this.utf8), args, {
-		// 		cwd: undefined,
-		// 		env: process.env,
-		// 		stdio: [ 'ignore', 'pipe', 'pipe' ],
-		// 		shell: this.utf8
-		// 	})
-		// ,   error: Error = null // null means no error previously reported.
-
-		// var output = captureOutput(proc);
-
-		// proc.on('close', function (code) {
-		// 	if(error) {
-		// 	return;
-		// 	} else if (code !== 0) {
-		// 	log('process exited with code ' + code);
-		// 	cb(mkErrorMsg('ADD', code, output), null);
-		// 	} else {
-		// 	cb(null);
-		// 	}
-		// });
-
-		// proc.stdout.on('data', function (data) {
-		// 	// simply discard output
-		// 	log(''+data);
-		// });
-
-		// proc.on('error', function(err) {
-		// 	error = err;
-		// 	cb(err);
-		// });
-
+		const {code, stdout, stderr, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+		if (success) {
+			cb(null);
+		} else {
+			cb(mkErrorMsg('ADD', code, {stdout, stderr}));
+		}
+		if (code !== 0) {
+			console.error('process exited with code ' + code);
+			cb(mkErrorMsg('ADD', code, {stderr, stdout}), null);
+		}
 		return this;
 	}
 
@@ -544,7 +434,7 @@ export /* default */ class Registry {
 	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
 	 * @returns {Registry} this registry key object
 	 */
-	remove (name: string, cb: (err: Error | null, _ignored_?: any) => void): this {
+	async remove (name: string, cb: (err: Error | null, _ignored_?: unknown) => void): Promise<this> {
 		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
@@ -552,37 +442,16 @@ export /* default */ class Registry {
 
 		pushArch(args, this.arch!);
 		console.log(`Debug ARG for REMOVE : `,args);
-		// var proc = spawn(getRegExePath(this.utf8), args, {
-		// 		cwd: undefined,
-		// 		env: process.env,
-		// 		stdio: [ 'ignore', 'pipe', 'pipe' ],
-		// 		shell: this.utf8
-		// 	})
-		// ,   error: Error = null // null means no error previously reported.
-
-		// var output = captureOutput(proc);
-
-		// proc.on('close', function (code) {
-		// 	if(error) {
-		// 	return;
-		// 	} else if (code !== 0) {
-		// 	log('process exited with code ' + code);
-		// 	cb(mkErrorMsg('DELETE', code, output), null);
-		// 	} else {
-		// 	cb(null);
-		// 	}
-		// });
-
-		// proc.stdout.on('data', function (data) {
-		// 	// simply discard output
-		// 	log(''+data);
-		// });
-
-		// proc.on('error', function(err) {
-		// 	error = err;
-		// 	cb(err);
-		// });
-
+		const {code, stdout, stderr, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+		if (success) {
+			cb(null);
+		} else {
+			cb(mkErrorMsg('DELETE', code, {stdout, stderr}));
+		}
+		if (code !== 0) {
+			console.error('process exited with code ' + code);
+			cb(mkErrorMsg('DELETE', code, {stderr, stdout}), null);
+		}
 		return this;
 	}
 
@@ -590,45 +459,25 @@ export /* default */ class Registry {
 	 * Remove all subkeys and values (including the default value) from this registry key.
 	 * @param {function (err)} cb - callback function
 	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @returns {Registry} this registry key object
+	 * @returns {Promise<Registry>} this registry key object
 	 */
-	clear(cb: (err: Error | null, _ignored_?: any) => void): this {
+	async clear(cb: (err: Error | null, _ignored_?: unknown) => void): Promise<this> {
 		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = ['DELETE', pathArg, '/f', '/va'];
 		pushArch(args, this.arch!);
 		console.log(`Debug ARG for CLEAR : `,args);
-		// var proc = spawn(getRegExePath(this.utf8), args, {
-		// 		cwd: undefined,
-		// 		env: process.env,
-		// 		stdio: [ 'ignore', 'pipe', 'pipe' ],
-		// 		shell: this.utf8
-		// 	})
-		// ,   error: Error = null // null means no error previously reported.
-
-		// var output = captureOutput(proc);
-
-		// proc.on('close', function (code) {
-		// 	if(error) {
-		// 	return;
-		// 	} else if (code !== 0) {
-		// 	log('process exited with code ' + code);
-		// 	cb(mkErrorMsg("DELETE", code, output), null);
-		// 	} else {
-		// 	cb(null);
-		// 	}
-		// });
-
-		// proc.stdout.on('data', function (data) {
-		// 	// simply discard output
-		// 	log(''+data);
-		// });
-
-		// proc.on('error', function(err) {
-		// 	error = err;
-		// 	cb(err);
-		// });
+		const {code, stdout, stderr, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+		if (success) {
+			cb(null);
+		} else {
+			cb(mkErrorMsg('DELETE', code, {stdout, stderr}));
+		}
+		if (code !== 0) {
+			console.error('process exited with code ' + code);
+			cb(mkErrorMsg('DELETE', code, {stderr, stdout}), null);
+		}
 
 		return this;
 	}
@@ -641,8 +490,8 @@ export /* default */ class Registry {
 	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
 	 * @returns {Registry} this registry key object
 	 */
-	erase(cb: (err: Error | null, _ignored_?: any) => void): this {
-		return this.clear(cb);
+	async erase(cb: (err: Error | null, _ignored_?: any) => void): Promise<this> {
+		return await this.clear(cb);
 	}
 
 	/**
@@ -651,7 +500,7 @@ export /* default */ class Registry {
 	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
 	 * @returns {Registry} this registry key object
 	 */
-	destroy(cb: (err: Error | null, _ignored_?: any) => void): this {
+	async destroy(cb: (err: Error | null, _ignored_?: unknown) => void): Promise<this> {
 
 		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
@@ -660,36 +509,16 @@ export /* default */ class Registry {
 		pushArch(args, this.arch!);
 		console.log(`Debug ARG for DESTROY : `,args);
 
-		// var proc = spawn(getRegExePath(this.utf8), args, {
-		// 		cwd: undefined,
-		// 		env: process.env,
-		// 		stdio: [ 'ignore', 'pipe', 'pipe' ],
-		// 		shell: this.utf8
-		// 	})
-		// ,   error: Error = null // null means no error previously reported.
-
-		// var output = captureOutput(proc);
-
-		// proc.on('close', function (code) {
-		// 	if (error) {
-		// 	return;
-		// 	} else if (code !== 0) {
-		// 	log('process exited with code ' + code);
-		// 	cb(mkErrorMsg('DELETE', code, output), null);
-		// 	} else {
-		// 	cb(null);
-		// 	}
-		// });
-
-		// proc.stdout.on('data', function (data) {
-		// 	// simply discard output
-		// 	log(''+data);
-		// });
-
-		// proc.on('error', function(err) {
-		// 	error = err;
-		// 	cb(err);
-		// });
+		const {code, stdout, stderr, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+		if (success) {
+			cb(null);
+		} else {
+			cb(mkErrorMsg('DELETE', code, {stdout, stderr}));
+		}
+		if (code !== 0) {
+			console.error('process exited with code ' + code);
+			cb(mkErrorMsg('DELETE', code, {stderr, stdout}), null);
+		}
 
 		return this;
 	};
@@ -700,7 +529,7 @@ export /* default */ class Registry {
 	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
 	 * @returns {Registry} this registry key object
 	 */
-	create(cb: (err: Error | null, _ignored_?: any) => void): this {
+	async create(cb: (err: Error | null, _ignored_?: unknown) => void): Promise<this> {
 
 		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 
@@ -708,39 +537,19 @@ export /* default */ class Registry {
 		const args = ['ADD', pathArg, '/f'];
 		pushArch(args, this.arch!);
 
-		// var proc = spawn(getRegExePath(this.utf8), args, {
-		// 		cwd: undefined,
-		// 		env: process.env,
-		// 		stdio: [ 'ignore', 'pipe', 'pipe' ],
-		// 		shell: this.utf8
-		// 	})
-		// ,   error: Error = null // null means no error previously reported.
-
-		// var output = captureOutput(proc);
-
-		// proc.on('close', function (code: number) {
-		// 	if (error) {
-		// 		return;
-		// 	} else if (code !== 0) {
-		// 		log('process exited with code ' + code);
-		// 	cb(mkErrorMsg('ADD', code, output), null);
-		// 	} else {
-		// 		cb(null);
-		// 	}
-		// });
-
-		// proc.stdout.on('data', function (data) {
-		// 	// simply discard output
-		// 	log(''+data);
-		// });
-
-		// proc.on('error', function(err) {
-		// 	error = err;
-		// 	cb(err);
-		// });
+		const {code, stdout, stderr, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+		if (success) {
+			cb(null);
+		} else {
+			cb(mkErrorMsg('ADD', code, {stdout, stderr}));
+		}
+		if (code !== 0) {
+			console.error('process exited with code ' + code);
+			cb(mkErrorMsg('ADD', code, {stderr, stdout}), null);
+		}
 
 		return this;
-	};
+	}
 
 	/**
 	 * Checks if this key already exists.
@@ -749,9 +558,9 @@ export /* default */ class Registry {
 	 * @param {boolean=} cb.exists - true if a registry key with this name already exists
 	 * @returns {Registry} this registry key object
 	 */
-	keyExists(cb: (err: Error | null, _ignored_?: any) => void): this {
+	async keyExists(cb: (err: Error | null, _ignored_?: unknown) => void): Promise<this> {
 
-		this.values(function (err, items) {
+		await this.values((err, _items) => {
 			if (err) {
 				if (err instanceof ProcessUncleanExitError && err.code == 1) {
 					return cb(null, false);
@@ -772,9 +581,9 @@ export /* default */ class Registry {
 	 * @param {boolean=} cb.exists - true if a value with the given name was found in this key
 	 * @returns {Registry} this registry key object
 	 */
-	valueExists (name: string, cb: (err: Error | null, _ignored_?: any) => void): this {
+	async valueExists (name: string, cb: (err: Error | null, _ignored_?: unknown) => void): Promise<this> {
 
-		this.get(name, function (err, item) {
+		await this.get(name, function (err, _item) {
 			if (err) {
 				// process should return with code 1 if value not found
 				if (err instanceof ProcessUncleanExitError && err.code == 1) {
