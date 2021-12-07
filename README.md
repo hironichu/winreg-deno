@@ -31,7 +31,7 @@ TBA
 
 # Use in Deno
 ```
-import { Registry } from 'https://deno.land/x/winreg-deno';
+import { Registry } from 'https://deno.land/x/winreg_deno/mod.ts';
 
 const regKey = new Registry({
     hive: Registry.HKCU,
