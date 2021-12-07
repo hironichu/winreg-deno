@@ -3,7 +3,7 @@ import ProcessUncleanExitError from '../error.ts'
 /*
  * Captures stdout/stderr for a child process
  */
-interface Output {
+export interface Output {
 	stdout: string;
 	stderr: string;
 }
@@ -12,12 +12,12 @@ interface Output {
 /*
  * Returns an error message containing the stdout/stderr of the child process
  */
-function mkErrorMsg(registryCommand: string, code: number, output: Output): Error {
+function mkErrorMsg(registryCommand: string, code: number, output: Output): string {
 	const stdout = output['stdout'].trim();
 	const stderr = output['stderr'].trim();
 
 	const msg = `${registryCommand} command exited with code ${code}:\n${stdout}\n${stderr}`;
-	return new ProcessUncleanExitError(msg, code);
+	return msg //new ProcessUncleanExitError(msg, code);
 }
 
 

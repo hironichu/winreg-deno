@@ -3,10 +3,10 @@ import { Registry } from '../mod.ts';
 
 const registry = new Registry({
 	hive: Registry.HKCU,
-	key: '\\Software\\Classes\\denoreg-debug'
+	key: '\\Software\\Classes\\Discord'
 });
 
 
-const res = await registry.get(Registry.DEFAULT_VALUE);
+const res = await registry.keyExists();
 
 console.log(res);

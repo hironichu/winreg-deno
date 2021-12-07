@@ -16,7 +16,7 @@ export default class ProcessUncleanExitError extends Error {
 	  this._code = code;
 
 	  Object.setPrototypeOf(this, ProcessUncleanExitError.prototype);
-	  Error.captureStackTrace(this, this.constructor); // after initialize properties
+	  Error.captureStackTrace(this, this.constructor);
 	}
 	// /**
 	//  * The error name.

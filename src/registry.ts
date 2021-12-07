@@ -3,6 +3,7 @@ import Options from './types/options.ts';
 import RegistryItem from './types/RegistryItem.ts'
 import ProcessUncleanExitError from './error.ts'
 import { RegistryItemImpl } from './types/RegistryItemImpl.ts'
+import {Output} from './util/util.ts'
 
 import {	mkErrorMsg,
 	pushArch,
@@ -45,7 +46,6 @@ export /* default */ class Registry {
 	private _utf8: boolean   // utf8 flag
 
 	constructor(options?: Options) {
-		console.info('[registry] Registry constructor')
 		const _options = options || {};
 		this._host = '' + (_options.host || '')    // hostname
 		this._hive = (_options.hive || HKLM)  // registry hive
@@ -243,36 +243,43 @@ export /* default */ class Registry {
 		const args = [ 'QUERY', pathArg];
 		pushArch(args, this.arch!);
 		//DEBUG
-		console.log(`Debug ARG for values : `,args);
-
-		const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-
-		if (!success) throw mkErrorMsg('QUERY', code, {stdout, stderr})
-		if (code != 0) throw new ProcessUncleanExitError(stderr, code)
-		const lines = stdout.split('\n')
-		const items = lines.reduce((acc, line: string) => {
-			if (line.length > 1) acc.push(line.trim());
-			return acc
-		}, <string[]>[])
-
-		const result = items.reduce((acc, item: string) => {
-			const match = ITEM_PATTERN.exec(item)
-			if (match) {
-				const regItem = new RegistryItemImpl(
-					this.host, 
-					this.hive, 
-					this.key, 
-					match[1].trim(),
-					match[2].trim(), 
-					match[3],
-					this.arch!
-				)
-				acc.push(regItem)
+		// console.log(`Debug ARG for values : `,args);
+		try {
+			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+	
+			if (!success) {
+				// console.log(mkErrorMsg('QUERY', code, {stdout, stderr}))
+				return false
 			}
-			return acc
-		}, <RegistryItem[]>[])
-
-		return result
+			if (code != 0) throw new ProcessUncleanExitError(stderr, code)
+			const lines = stdout.split('\n')
+			const items = lines.reduce((acc, line: string) => {
+				if (line.length > 1) acc.push(line.trim());
+				return acc
+			}, <string[]>[])
+	
+			const result = items.reduce((acc, item: string) => {
+				const match = ITEM_PATTERN.exec(item)
+				if (match) {
+					const regItem = new RegistryItemImpl(
+						this.host, 
+						this.hive, 
+						this.key, 
+						match[1].trim(),
+						match[2].trim(), 
+						match[3],
+						this.arch!
+					)
+					acc.push(regItem)
+				}
+				return acc
+			}, <RegistryItem[]>[])
+	
+			return result
+		} catch {
+			// console.log(mkErrorMsg('QUERY', err.code, err))
+			return false;
+		}
 	}
 
 	/**
@@ -289,7 +296,10 @@ export /* default */ class Registry {
 		try {
 			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
 	
-			if (!success) throw mkErrorMsg('QUERY', code, {stdout, stderr})
+			if (!success) {
+				// console.log(mkErrorMsg('QUERY', code, {stdout, stderr}))
+				return false
+			}
 			if (code != 0) throw new ProcessUncleanExitError(stderr, code)
 			const lines = stdout.split('\n')
 			const items = lines.reduce((acc, line: string) => {
@@ -312,8 +322,9 @@ export /* default */ class Registry {
 				return acc
 			}, <Registry[]>[])
 			return result
-		} catch {
-			return false
+		} catch (err) {
+			console.error(new ProcessUncleanExitError(err.stderr, err.code));
+			return false;
 		}
 	}
 
@@ -333,10 +344,13 @@ export /* default */ class Registry {
 		}
 
 		pushArch(args, this.arch!);
-		console.debug(`Debug ARG for get : `,args);
+		// console.debug(`Debug ARG for get : `,args);
 		try {
 			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-			if (!success) throw (mkErrorMsg('QUERY', code, {stdout, stderr}), undefined);
+			if (!success) {
+				// console.log(mkErrorMsg('QUERY', code, {stdout, stderr}))
+				return false
+			}
 			if (code != 0) throw (new ProcessUncleanExitError(stderr, code));
 			const lines = stdout.split('\n')
 			let result = null
@@ -362,8 +376,8 @@ export /* default */ class Registry {
 				return false
 			}
 		} catch (err) {
-			console.error(`Error in Registry.get() : ${err}`);
-			return false
+			// console.error(new ProcessUncleanExitError(err.stderr, err.code));
+			return false;
 		}
 	}
 
@@ -389,15 +403,19 @@ export /* default */ class Registry {
 		args = args.concat(['/t', type, '/d', value, '/f']);
 
 		pushArch(args, this.arch!);
-		console.log(`Debug ARG for set : `,args);
+		// console.log(`Debug ARG for set : `,args);
 		try {
-			const  {stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
 	
-			if (!success) return false
+			if (!success) {
+				// console.log(mkErrorMsg('QUERY', code, {stdout, stderr}))
+				return false
+			}
 			if (code != 0) throw (new ProcessUncleanExitError(stderr, code));
 			return success
 		} catch (err) {
-			throw err
+			// console.error(new ProcessUncleanExitError(err.stderr, err.code));
+			return false;
 		}
 	}
 
@@ -412,15 +430,19 @@ export /* default */ class Registry {
 		const args = name ? ['DELETE', pathArg, '/f', '/v', name] : ['DELETE', pathArg, '/f', '/ve'];
 
 		pushArch(args, this.arch!);
-		console.log(`Debug ARG for REMOVE : `,args);
+		// console.log(`Debug ARG for REMOVE : `,args);
 		try {
-			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+			const  {stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
 	
-			if (!success) throw (mkErrorMsg('DELETE', code, {stdout, stderr}), undefined);
+			if (!success) {
+				// console.log(mkErrorMsg('QUERY', code, {stdout, stderr}))
+				return false
+			}
 			if (code != 0) throw(new ProcessUncleanExitError(stderr, code));
 			return success
-		} catch (err) {
-			throw err
+		} catch {
+			// console.error(new ProcessUncleanExitError(err.stderr, err.code));
+			return false;
 		}
 	}
 
@@ -432,14 +454,18 @@ export /* default */ class Registry {
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = ['DELETE', pathArg, '/f', '/va'];
 		pushArch(args, this.arch!);
-		console.log(`Debug ARG for CLEAR : `,args);
+		// console.log(`Debug ARG for CLEAR : `,args);
 		try {
-			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-			if (!success) throw (mkErrorMsg('DELETE', code, {stdout, stderr}), undefined);
+			const  {stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+			if (!success) {
+				// console.log(mkErrorMsg('QUERY', code, {stdout, stderr}))
+				return false
+			}
 			if (code != 0) throw (new ProcessUncleanExitError(stderr, code));
 			return success
-		} catch (err) {
-			throw (err)
+		} catch {
+			// console.error(new ProcessUncleanExitError(err.stderr, err.code));
+			return false;
 		}
 	}
 
@@ -452,14 +478,18 @@ export /* default */ class Registry {
 		const args = ['DELETE', pathArg, '/f'];
 
 		pushArch(args, this.arch!);
-		console.log(`Debug ARG for DESTROY : `,args);
+		// console.log(`Debug ARG for DESTROY : `,args);
 		try {
-			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-			if (!success) throw (mkErrorMsg('DELETE', code, {stdout, stderr}), undefined);
+			const  { stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+			if (!success) {
+				// console.log(mkErrorMsg('QUERY', code, {stdout, stderr}))
+				return false
+			}
 			if (code != 0) throw (new ProcessUncleanExitError(stderr, code));
 			return success;
-		} catch (err) {
-			throw err
+		} catch {
+			// console.error(new ProcessUncleanExitError(err.stderr, err.code));
+			return false;
 		}
 	}
 
@@ -473,15 +503,16 @@ export /* default */ class Registry {
 		const args = ['ADD', pathArg, '/f'];
 		pushArch(args, this.arch!);
 		try {
-			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-			if (!success) throw (mkErrorMsg('ADD', code, {stdout, stderr}), undefined);
+			const  {stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+			if (!success) return false
 			if (code != 0) throw (new ProcessUncleanExitError(stderr, code));
 			return success;
 		} catch (err) {
 			if (err.code == 'ENOENT') {
 				throw Error('Registry.create() requires Windows 10 or later.');
 			}
-			throw err;
+			// console.error(new ProcessUncleanExitError(err.stderr, err.code));
+			return false;
 		}
 	}
 
