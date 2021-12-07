@@ -42,12 +42,20 @@ const regKey = new Registry({
 //Note that to get the value of a key, you need to call the registry.get() / registry.values() / registry.keys() methods
 
 ```
+# Testing
 
+More tests are required in order to ensure the safety of this library, however I have a module that makes uses of most of the methods of this library with success.
 
+----
+
+> This package is a Fork of two other forks, I do not know if they are still maintained.
+> I have also added some new features and fixed some bugs.
+
+---
 
 # MIT License
 
-Copyright (c) 2020 Emmanuel Kimmerlin
+Copyright (c) 2021 Nassim Zen
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

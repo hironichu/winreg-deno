@@ -3,9 +3,9 @@ import Options from './types/options.ts';
 import RegistryItem from './types/RegistryItem.ts'
 import ProcessUncleanExitError from './error.ts'
 import { RegistryItemImpl } from './types/RegistryItemImpl.ts'
-import {Output} from './util/util.ts'
 
-import {	mkErrorMsg,
+import {
+	mkErrorMsg,
 	pushArch,
 	getRegExePath,
 } from './util/util.ts'
@@ -394,15 +394,19 @@ export /* default */ class Registry {
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		let args = ['ADD', pathArg];
-		if (name == '') {
+		if (name === '') {
 			args.push('/ve');
 		}  else {
-			args = args.concat(['/v', name]);
+			args = args.concat(['/v', `"${name}"`]);
+		}
+		if (value === '') {
+			args = args.concat(['/t', `"${type}"`, '/f']);
+		} else {
+			args = args.concat(['/t', `"${type}"`, '/d', `"${value}"`, '/f']);
 		}
 
-		args = args.concat(['/t', type, '/d', value, '/f']);
-
 		pushArch(args, this.arch!);
+
 		// console.log(`Debug ARG for set : `,args);
 		try {
 			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
