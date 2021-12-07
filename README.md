@@ -1,26 +1,42 @@
+<p align="center">
+<img width="720" height="304" src="https://user-images.githubusercontent.com/75753187/123358567-aac7b900-d539-11eb-8275-0b380264bb4c.png" alt="">
+</p>
 # winreg-Deno
 
+> **NOTE**: This is not production ready, and is only meant to be used for testing purposes.
+
 This is a Deno port of Winreg-ts from NPMJS, that allows the user to read and write registry values.
+
+Compared to the original Repo/Fork I have made some breaking changes to how it works.
+I have removed the Callback returns from the methods and instead return a Promise with the result or the error.
+this allows a clean and consistent Lib to use.
+
 
 ~~Basically, it is a raw migration of the original project https://github.com/fresc81/node-winreg to typescript.
 We even keep the code formatting and design to ease the comparaison and do not introduce regressions.
 We just add utf8 support from https://github.com/eskibear/node-winreg-utf8~~
 
 # Installation
-The following command installs winreg-ts.
+The following command installs winreg-deno.
+
+> For now only the use in Deno is supported
+
 ```bash
 TBA
 ```
 
-# Typescript
+# Use in Deno
 ```
-import { Registry } from 'TBA';
+import { Registry } from 'https://deno.land/x/winreg-deno';
 
 const regKey = new Registry({
     hive: Registry.HKCU,
     key: '\\Software\\Microsoft\\Windows\\CurrentVersion',
     utf8: true
 });
+//This will return the value of the key "CurrentVersion"
+//Note that to get the value of a key, you need to call the registry.get() / registry.values() / registry.keys() methods
+
 ```
 
 
