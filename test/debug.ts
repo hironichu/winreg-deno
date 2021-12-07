@@ -1,4 +1,4 @@
-import {Registry} from '../src/mod.ts';
+import {Registry} from '../mod.ts';
 
 
 console.log(`
@@ -19,10 +19,7 @@ Registered new Class
 -> Method list ${Object.getOwnPropertyNames(newReg)}
 `);
 
-await newReg.get(Registry.DEFAULT_VALUE, (err, items) => {
-	console.info('Error : ', err);
-	console.info('Items : ', items);
-})
+await newReg.get(Registry.DEFAULT_VALUE)
 
 // const test = newReg.values((_err, items) => {
 // 	console.log(`Result for Values`, items)

@@ -1,7 +1,11 @@
 <p align="center">
 <img width="720" height="304" src="https://github.com/hironichu/winreg-deno/blob/master/assets/WinRegDenoLogo.jpg?raw=true" alt="">
 </p>
-# winreg-Deno
+
+# Winreg Deno
+
+### *A safe module for reading and writing Windows registry*.
+
 
 > **NOTE**: This is not production ready, and is only meant to be used for testing purposes.
 

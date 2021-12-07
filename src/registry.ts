@@ -235,14 +235,9 @@ export /* default */ class Registry {
 
 	/**
 	 * Retrieve all values from this registry key.
-	 * @param {valuesCallback} cb - callback function
-	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @param {array=} cb.items - an array of {@link RegistryItem} objects
-	 * @returns {Registry} this registry key object
+	 * @returns {Promise<RegistryItem[] | boolean>} A promise that resolves to an array of {@link RegistryItem} objects or `false` if the key does not exist.
 	 */
-	values(cb: (err: Error | null, items?: RegistryItem[]) => void): this {
-
-		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
+	async values(): Promise<RegistryItem[] | boolean> {
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = [ 'QUERY', pathArg];
@@ -250,64 +245,58 @@ export /* default */ class Registry {
 		//DEBUG
 		console.log(`Debug ARG for values : `,args);
 
-		const  proc = $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-		proc.then(({stdout, stderr, code, success}) => {
-			if (!success) cb(mkErrorMsg('QUERY', code, {stdout, stderr}), undefined);
-			if (code != 0) cb(new ProcessUncleanExitError(stderr, code));
-			const lines = stdout.split('\n')
-			const items = lines.reduce((acc, line: string) => {
-				if (line.length > 1) acc.push(line.trim());
-				return acc
-			}, <string[]>[])
+		const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
 
-			const result = items.reduce((acc, item: string) => {
-				const match = ITEM_PATTERN.exec(item)
-				if (match) {
-					const regItem = new RegistryItemImpl(
-						this.host, 
-						this.hive, 
-						this.key, 
-						match[1].trim(),
-						match[2].trim(), 
-						match[3],
-						this.arch!
-					)
-					acc.push(regItem)
-				}
-				return acc
-			}, <RegistryItem[]>[])
-			cb(null, result);
-		}).catch(err => {
-			cb(err);
-		})
-		return this
+		if (!success) throw mkErrorMsg('QUERY', code, {stdout, stderr})
+		if (code != 0) throw new ProcessUncleanExitError(stderr, code)
+		const lines = stdout.split('\n')
+		const items = lines.reduce((acc, line: string) => {
+			if (line.length > 1) acc.push(line.trim());
+			return acc
+		}, <string[]>[])
+
+		const result = items.reduce((acc, item: string) => {
+			const match = ITEM_PATTERN.exec(item)
+			if (match) {
+				const regItem = new RegistryItemImpl(
+					this.host, 
+					this.hive, 
+					this.key, 
+					match[1].trim(),
+					match[2].trim(), 
+					match[3],
+					this.arch!
+				)
+				acc.push(regItem)
+			}
+			return acc
+		}, <RegistryItem[]>[])
+
+		return result
 	}
 
 	/**
 	 * Retrieve all subkeys from this registry key.
-	 * @param {function (err, items)} cb - callback function
-	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @param {array=} cb.items - an array of {@link Registry} objects
-	 * @returns {Registry} this registry key object
+	 * @returns {Promise<Registry[] | boolean>} this registry key object
 	 */
-	keys(cb: (err: Error | null, items?: Registry[]) => void): this {
-		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
+	async keys(): Promise<Registry[] | boolean> {
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = [ 'QUERY', pathArg];
 
 		pushArch(args, this.arch!);
 		console.debug(`Debug ARG for keys : `,args);
-		const  proc = $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-		proc.then(({stdout, stderr, code, success}) => {
-			if (!success) cb(mkErrorMsg('QUERY', code, {stdout, stderr}), undefined);
-			if (code != 0) cb(new ProcessUncleanExitError(stderr, code));
+		try {
+			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+	
+			if (!success) throw mkErrorMsg('QUERY', code, {stdout, stderr})
+			if (code != 0) throw new ProcessUncleanExitError(stderr, code)
 			const lines = stdout.split('\n')
 			const items = lines.reduce((acc, line: string) => {
 				if (line.length > 1) acc.push(line.trim());
 				return acc
 			}, <string[]>[])
-			
+				
 			const result = items.reduce((acc, item: string) => {
 				const match = ITEM_PATTERN.exec(item)
 				if (match) {
@@ -322,24 +311,18 @@ export /* default */ class Registry {
 				}
 				return acc
 			}, <Registry[]>[])
-			cb(null, result);
-		}).catch(err => {
-			cb(err);
-		})
-
-		return this;
+			return result
+		} catch {
+			return false
+		}
 	}
 
 	/**
 	 * Gets a named value from this registry key.
 	 * @param {string} name - the value name, use {@link Registry.DEFAULT_VALUE} or an empty string for the default value
-	 * @param {function (err, item)} cb - callback function
-	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @param {RegistryItem=} cb.item - the retrieved registry item
-	 * @returns {Registry} this registry key object
+	 * @returns {Promise<RegistryItem | boolean>} the value or false if the value does not exist
 	 */
-	get(name: string, cb: (err: Error | null, item?: RegistryItem) => void): this {
-		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
+	async get(name: string): Promise<RegistryItem | boolean> {
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		let args = [ 'QUERY', pathArg];
@@ -351,19 +334,18 @@ export /* default */ class Registry {
 
 		pushArch(args, this.arch!);
 		console.debug(`Debug ARG for get : `,args);
-		const  proc = $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-		proc.then(({stdout, stderr, code, success}) => {
-			if (!success) cb(mkErrorMsg('QUERY', code, {stdout, stderr}), undefined);
-			if (code != 0) cb(new ProcessUncleanExitError(stderr, code));
+		try {
+			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+			if (!success) throw (mkErrorMsg('QUERY', code, {stdout, stderr}), undefined);
+			if (code != 0) throw (new ProcessUncleanExitError(stderr, code));
 			const lines = stdout.split('\n')
 			let result = null
 			const items = lines.reduce((acc, line: string) => {
 				if (line.length > 1) acc.push(line.trim());
 				return acc
 			}, <string[]>[])
-
+	
 			const item = items[items.length-1] || ''
-			console.debug(`Item`, items)
 			const match = ITEM_PATTERN.exec(item)
 			if (match) {
 				result = new RegistryItemImpl(
@@ -375,15 +357,14 @@ export /* default */ class Registry {
 					match[3],
 					this.arch!
 				)
-				cb(null, result);
+				return result
 			} else {
-				cb(null, undefined);
+				return false
 			}
-		}).catch(err => {
-			cb(err);
-		})
-
-		return this;
+		} catch (err) {
+			console.error(`Error in Registry.get() : ${err}`);
+			return false
+		}
 	}
 
 	/**
@@ -391,13 +372,10 @@ export /* default */ class Registry {
 	 * @param {string} name - the value name, use {@link Registry.DEFAULT_VALUE} or an empty string for the default value
 	 * @param {string} type - the value type
 	 * @param {string} value - the value
-	 * @param {function (err)} cb - callback function
-	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @returns {Registry} this registry key object
+	 * @returns {Promise<boolean>} true if the value was set, false otherwise
 	 */
-	set(name: string, type: string, value: string, cb: (err: Error | null, _ignored_?: unknown) => void): this {
+	async set(name: string, type: string, value: string): Promise<boolean> {
 
-		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
 		if (REG_TYPES.indexOf(type) == -1) throw Error('illegal type specified.');
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
@@ -412,167 +390,116 @@ export /* default */ class Registry {
 
 		pushArch(args, this.arch!);
 		console.log(`Debug ARG for set : `,args);
-		const  proc = $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-		proc.then(({stdout, stderr, code, success}) => {
-			if (!success) cb(mkErrorMsg('ADD', code, {stdout, stderr}), undefined);
-			if (code != 0) cb(new ProcessUncleanExitError(stderr, code));
-			cb(null, true);
-		}).catch(err => {
-			cb(err);
-		})
-
-		return this;
+		try {
+			const  {stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+	
+			if (!success) return false
+			if (code != 0) throw (new ProcessUncleanExitError(stderr, code));
+			return success
+		} catch (err) {
+			throw err
+		}
 	}
 
 	/**
 	 * Remove a named value from this registry key. If name is empty, sets the default value of this key.
 	 * Note: This key must be already existing.
 	 * @param {string} name - the value name, use {@link Registry.DEFAULT_VALUE} or an empty string for the default value
-	 * @param {function (err)} cb - callback function
-	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @returns {Registry} this registry key object
+	 * @returns {Promise<boolean>} this registry key object
 	 */
-	remove (name: string, cb: (err: Error | null, _ignored_?: unknown) => void): this {
-		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
-
+	async remove (name: string): Promise<boolean> {
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = name ? ['DELETE', pathArg, '/f', '/v', name] : ['DELETE', pathArg, '/f', '/ve'];
 
 		pushArch(args, this.arch!);
 		console.log(`Debug ARG for REMOVE : `,args);
-		const  proc = $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-		proc.then(({stdout, stderr, code, success}) => {
-			if (!success) cb(mkErrorMsg('DELETE', code, {stdout, stderr}), undefined);
-			if (code != 0) cb(new ProcessUncleanExitError(stderr, code));
-			cb(null, true);
-		}).catch(err => {
-			cb(err);
-		})
-		return this;
+		try {
+			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+	
+			if (!success) throw (mkErrorMsg('DELETE', code, {stdout, stderr}), undefined);
+			if (code != 0) throw(new ProcessUncleanExitError(stderr, code));
+			return success
+		} catch (err) {
+			throw err
+		}
 	}
 
 	/**
 	 * Remove all subkeys and values (including the default value) from this registry key.
-	 * @param {function (err)} cb - callback function
-	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @returns {Promise<Registry>} this registry key object
+	 * @returns {Promise<boolean>} this registry key object
 	 */
-	clear(cb: (err: Error | null, _ignored_?: unknown) => void): this {
-		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
-
+	async clear(): Promise<boolean> {
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = ['DELETE', pathArg, '/f', '/va'];
 		pushArch(args, this.arch!);
 		console.log(`Debug ARG for CLEAR : `,args);
-		const  proc = $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-		proc.then(({stdout, stderr, code, success}) => {
-			if (!success) cb(mkErrorMsg('DELETE', code, {stdout, stderr}), undefined);
-			if (code != 0) cb(new ProcessUncleanExitError(stderr, code));
-			cb(null, true);
-		}).catch(err => {
-			cb(err);
-		})
-		return this;
-	}
-
-	/**
-	 * Alias for the clear method to keep it backward compatible.
-	 * @method
-	 * @deprecated Use {@link Registry#clear} or {@link Registry#destroy} in favour of this method.
-	 * @param {function (err)} cb - callback function
-	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @returns {Registry} this registry key object
-	 */
-	erase(cb: (err: Error | null, _ignored_?: any) => void): this {
-		return  this.clear(cb);
+		try {
+			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+			if (!success) throw (mkErrorMsg('DELETE', code, {stdout, stderr}), undefined);
+			if (code != 0) throw (new ProcessUncleanExitError(stderr, code));
+			return success
+		} catch (err) {
+			throw (err)
+		}
 	}
 
 	/**
 	 * Delete this key and all subkeys from the registry.
-	 * @param {function (err)} cb - callback function
-	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @returns {Registry} this registry key object
+	 * @returns {Promise<boolean>} this registry key object
 	 */
-	destroy(cb: (err: Error | null, _ignored_?: unknown) => void): this {
-
-		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
+	async destroy(): Promise<boolean> {
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = ['DELETE', pathArg, '/f'];
 
 		pushArch(args, this.arch!);
 		console.log(`Debug ARG for DESTROY : `,args);
-
-		const  proc = $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-		proc.then(({stdout, stderr, code, success}) => {
-			if (!success) cb(mkErrorMsg('DELETE', code, {stdout, stderr}), undefined);
-			if (code != 0) cb(new ProcessUncleanExitError(stderr, code));
-			cb(null, true);
-		}).catch(err => {
-			cb(err);
-		})
-		return this;
-	};
+		try {
+			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+			if (!success) throw (mkErrorMsg('DELETE', code, {stdout, stderr}), undefined);
+			if (code != 0) throw (new ProcessUncleanExitError(stderr, code));
+			return success;
+		} catch (err) {
+			throw err
+		}
+	}
 
 	/**
 	 * Create this registry key. Note that this is a no-op if the key already exists.
-	 * @param {function (err)} cb - callback function
-	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @returns {Registry} this registry key object
+	 * @returns {Promise<boolean>} this registry key object
 	 */
-	create(cb: (err: Error | null, _ignored_?: unknown) => void): this {
-
-		if (typeof cb !== 'function') throw new TypeError('must specify a callback');
+	async create(): Promise<boolean> {
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		const args = ['ADD', pathArg, '/f'];
 		pushArch(args, this.arch!);
-
-		const  proc = $`${getRegExePath(this.utf8)} ${args.join(' ')}`
-		proc.then(({stdout, stderr, code, success}) => {
-			if (!success) cb(mkErrorMsg('ADD', code, {stdout, stderr}), undefined);
-			if (code != 0) cb(new ProcessUncleanExitError(stderr, code));
-			cb(null, true);
-		}).catch(err => {
-			cb(err);
-		})
-		return this;
+		try {
+			const  {stdout, stderr, code, success} = await $`${getRegExePath(this.utf8)} ${args.join(' ')}`
+			if (!success) throw (mkErrorMsg('ADD', code, {stdout, stderr}), undefined);
+			if (code != 0) throw (new ProcessUncleanExitError(stderr, code));
+			return success;
+		} catch (err) {
+			if (err.code == 'ENOENT') {
+				throw Error('Registry.create() requires Windows 10 or later.');
+			}
+			throw err;
+		}
 	}
 
 	/**
 	 * Checks if this key already exists.
-	 * @param {boolean} [ret] - if true, we return the value of the data returned from Values
-	 * @returns {Promise<boolean>} true if a registry key with this name already exists
+	 * @returns {Promise<boolean | RegistryItem[]>} true if a registry key with this name already exists
 	 */
-	keyExists(ret?:boolean): Promise<boolean | RegistryItem[] | Error> {
-		return new Promise((resolve) => {
-			this.values((err, items) => {
-				if (err && ret) resolve(err);
-				if (items && ret) resolve(items)
-				if (err) resolve(false);
-				if (items) resolve(true);
-			})
-		})
+	async keyExists(): Promise<boolean | RegistryItem[]> {
+		return await this.values()
 	}
 
 	/**
 	 * Checks if a value with the given name already exists within this key.
 	 * @param {string} name - the value name, use {@link Registry.DEFAULT_VALUE} or an empty string for the default value
-	 * @param {function (err, exists)} cb - callback function
-	 * @param {ProcessUncleanExitError=} cb.err - error object or null if successful
-	 * @param {boolean=} cb.exists - true if a value with the given name was found in this key
-	 * @returns {Registry} this registry key object
+	 * @returns {Promise<boolean | RegistryItem>} this registry key object
 	 */
-	valueExists (name: string, cb: (err: Error | null, _ignored_?: unknown) => void): this {
-
-		this.get(name, (err, _item) => {
-			if (err) {
-				if (err instanceof ProcessUncleanExitError && err.code == 1) {
-					return cb(null, false);
-				}
-				return cb(err);
-			}
-			cb(null, true);
-		});
-		return this;
+	async valueExists (name: string): Promise<boolean | RegistryItem> {
+		const value = await this.get(name);
+		return value != false;
 	}
 }

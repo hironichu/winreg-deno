@@ -1,5 +1,5 @@
 //This test is for custom scheme
-import { Registry } from '../src/mod.ts';
+import { Registry } from '../mod.ts';
 
 const registry = new Registry({
 	hive: Registry.HKCU,
@@ -7,6 +7,6 @@ const registry = new Registry({
 });
 
 
-const res = await registry.get(Registry.DEFAULT_VALUE, (err, res) => res || err);
+const res = await registry.get(Registry.DEFAULT_VALUE);
 
 console.log(res);
