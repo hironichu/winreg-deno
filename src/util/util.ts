@@ -49,7 +49,6 @@ function pushArch(args: string[], arch?: string) {
  * Implemented only for Windows (and WSL)
  */
 function getRegExePath(utf8: boolean): string {
-	console.log(`State of WSL: ${wslState} os platform: ${currentOS}`);
 	if (currentOS === 'windows' && !wslState) {
 		if (utf8) {
 		return path.join(Deno.env.get('windir')!, 'system32', 'chcp.com') + ' 65001 | ' + path.join(Deno.env.get('windir')!, 'system32', 'reg.exe');
