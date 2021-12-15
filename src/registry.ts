@@ -394,6 +394,8 @@ export /* default */ class Registry {
 
 		const pathArg = this.utf8 ? `"${this.path}"` : this.path;
 		let args = ['ADD', pathArg];
+		//Escape " in value
+		value = value.replace(/"/g, '\\"');
 		if (name === '') {
 			args.push('/ve');
 		}  else {

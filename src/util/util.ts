@@ -1,4 +1,4 @@
-import {path, os} from '../deps.ts'
+import {path, os, currentOS, wslState} from '../deps.ts'
 import ProcessUncleanExitError from '../error.ts'
 /*
  * Captures stdout/stderr for a child process
@@ -46,18 +46,22 @@ function pushArch(args: string[], arch?: string) {
 
 /*
  * Get the path to system's reg.exe. Useful when another reg.exe is added to the PATH
- * Implemented only for Windows
+ * Implemented only for Windows (and WSL)
  */
 function getRegExePath(utf8: boolean): string {
-  if (os.platform() === 'windows') {
-	if (utf8) {
-	  return path.join(Deno.env.get('windir')!, 'system32', 'chcp.com') + ' 65001 | ' + path.join(Deno.env.get('windir')!, 'system32', 'reg.exe');
+	console.log(`State of WSL: ${wslState} os platform: ${currentOS}`);
+	if (currentOS === 'windows' && !wslState) {
+		if (utf8) {
+		return path.join(Deno.env.get('windir')!, 'system32', 'chcp.com') + ' 65001 | ' + path.join(Deno.env.get('windir')!, 'system32', 'reg.exe');
+		} else {
+		return path.join(Deno.env.get('windir')!, 'system32', 'reg.exe');
+		}
+	} else if (currentOS === 'windows' && wslState) {
+		//on WSL, returns the REG.exe that can be executed on WSL
+		return "REG.exe";
 	} else {
-	  return path.join(Deno.env.get('windir')!, 'system32', 'reg.exe');
+		throw new Error(`Winreg doesn't work on this platform ${os.platform()}`);
 	}
-  } else {
-	  return "REG";
-  }
 }
 
 export {
